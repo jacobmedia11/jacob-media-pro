@@ -37,12 +37,21 @@ function metaGet($url) {
   return json_decode($r, true);
 }
 
-// ── 1. Try billing_history (monthly invoice accounts) ─────────────────────
+// ── 1. Try billing_history (try v17.0 first — wider account support) ────────
 $data = metaGet(
-  "https://graph.facebook.com/v19.0/act_{$account}/billing_history"
+  "https://graph.facebook.com/v17.0/act_{$account}/billing_history"
   . "?fields=id,type,currency,amount,time,payment_method,status,vat_invoice_id"
   . "&limit=24&access_token={$token}"
 );
+
+// Fall back to v19.0 if v17 also fails
+if (isset($data['error'])) {
+  $data = metaGet(
+    "https://graph.facebook.com/v19.0/act_{$account}/billing_history"
+    . "?fields=id,type,currency,amount,time,payment_method,status,vat_invoice_id"
+    . "&limit=24&access_token={$token}"
+  );
+}
 
 if (!isset($data['error'])) {
   // billing_history worked — build invoice list
