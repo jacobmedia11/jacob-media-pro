@@ -54,6 +54,41 @@ if (!$account || !isset($TOKENS[$account])) {
 
 $token = $TOKENS[$account];
 
+// Previous period summary for week-over-week comparison
+if (isset($_GET['prev'])) {
+  $days = match($preset) {
+    'yesterday' => 1, 'last_7d' => 7, 'last_14d' => 14,
+    'last_30d'  => 30, 'last_90d' => 90, default => 7,
+  };
+  $until = date('Y-m-d', strtotime("-{$days} days"));
+  $since = date('Y-m-d', strtotime('-' . ($days * 2) . ' days'));
+  $fields = "id,name,insights{spend,impressions,clicks,actions}";
+  $url = "https://graph.facebook.com/v19.0/act_{$account}/campaigns"
+       . "?fields=" . urlencode($fields)
+       . "&time_range=" . urlencode(json_encode(['since' => $since, 'until' => $until]))
+       . "&limit=50&access_token=" . $token;
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+  $response = curl_exec($ch);
+  curl_close($ch);
+  $data = json_decode($response, true);
+  $ts = 0; $tc = 0; $ti = 0; $tl = 0;
+  foreach ($data['data'] ?? [] as $c) {
+    $ins = $c['insights']['data'][0] ?? null;
+    if (!$ins) continue;
+    $ts += (float)($ins['spend'] ?? 0);
+    $tc += (int)($ins['clicks'] ?? 0);
+    $ti += (int)($ins['impressions'] ?? 0);
+    $actions = $ins['actions'] ?? [];
+    foreach ($actions as $a) {
+      if (in_array($a['action_type'], ['lead','onsite_conversion.lead_grouped'])) $tl += (int)$a['value'];
+    }
+  }
+  echo json_encode(['spend' => $ts, 'clicks' => $tc, 'impressions' => $ti, 'leads' => $tl]);
+  exit;
+}
+
 if ($type === 'quickstats') {
   $fields = "id,name,insights.date_preset({$preset}){spend,impressions,clicks,ctr,actions}";
 } else {
@@ -115,6 +150,8 @@ if (isset($data['error']) && in_array($data['error']['code'] ?? 0, $tokenErrorCo
 </table>
 </body></html>";
     smtpSend('jokuubas11@gmail.com', "⚠️ Token klaida — {$affectedName} | Jacob Media Pro", $html);
+    require_once __DIR__ . '/telegram.php';
+    telegramSend("⚠️ <b>Meta token expired</b>\nClient: <b>{$affectedName}</b>\nAccount: act_{$account}\nError: {$errMsg}\nTime: " . date('Y-m-d H:i'));
   }
 } elseif (!isset($data['error']) && $account) {
   // Clear previous error if API call succeeded

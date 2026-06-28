@@ -897,6 +897,7 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
   // ── Chart state ────────────────────────────────────────────────────────
   let spendChart = null, convChart = null;
   let allCampaigns = [], selectedIdx = -1, currentClient = null, statusFilter = 'all';
+  let prevTotals = null;
 
   function setStatusFilter(status) {
     statusFilter = status;
@@ -1134,11 +1135,13 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
 
     const preset = document.getElementById('period-select')?.value || 'last_30d';
     const pub = window._publicMode ? '&public=1' : '';
-    const url = `api-proxy.php?account=${currentClient.account}&preset=${preset}&type=campaigns${pub}`;
+    const url     = `api-proxy.php?account=${currentClient.account}&preset=${preset}&type=campaigns${pub}`;
+    const prevUrl = `api-proxy.php?account=${currentClient.account}&preset=${preset}&prev=1${pub}`;
 
     try {
-      const res = await fetch(url);
+      const [res, prevRes] = await Promise.all([fetch(url), fetch(prevUrl)]);
       const json = await res.json();
+      prevTotals = await prevRes.json().catch(() => null);
 
       if (json.error) { setStatus('error', 'Klaida: ' + json.error.message); return; }
 
@@ -1234,6 +1237,14 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
 
   function visible(idx, list = allCampaigns) { return idx === -1 ? list : [list[idx]]; }
 
+  function trendHtml(current, prev) {
+    if (!prev || prev === 0) return '';
+    const pct = ((current - prev) / prev * 100);
+    const cls  = pct >= 0 ? 'trend-up' : 'trend-down';
+    const sign = pct >= 0 ? '↑' : '↓';
+    return ` <span class="${cls}">${sign} ${Math.abs(pct).toFixed(1)}%</span>`;
+  }
+
   function renderCards(idx, filtered = allCampaigns) {
     const list = visible(idx, filtered);
     const ts = list.reduce((s,c) => s+c.spend, 0);
@@ -1246,14 +1257,27 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
     const cpl = tl > 0 ? (ts/tl).toFixed(2) : '—';
     const ac  = list.filter(c => c.status==='ACTIVE').length;
 
-    document.getElementById('val-spend').textContent  = eur(ts);
-    document.getElementById('sub-spend').textContent  = idx===-1 ? `${list.length} kampanijos · ${ac} aktyvios` : list[0].name;
+    const p    = prevTotals;
+    const pCtr = p && p.impressions > 0 ? (p.clicks / p.impressions * 100) : 0;
+
+    document.getElementById('val-spend').textContent = eur(ts);
+    document.getElementById('sub-spend').innerHTML   = (p ? 'vs prev period' + trendHtml(ts, p.spend)
+      : `${list.length} kamp. · ${ac} aktyvios`);
+
     document.getElementById('val-clicks').textContent = fmt(tc);
-    document.getElementById('sub-clicks').textContent = `${fmt(ti)} parodymų · ${fmt(tr)} pasiekti`;
-    document.getElementById('val-ctr').textContent    = ctr.toFixed(2)+'%';
-    document.getElementById('sub-ctr').textContent    = `Vid. CPC €${cpc.toFixed(3)}`;
-    document.getElementById('val-leads').textContent  = tl || '—';
-    document.getElementById('sub-leads').textContent  = tl ? `CPL €${cpl}` + (idx===-1?' · visos':'') : 'Nėra konversijų';
+    document.getElementById('sub-clicks').innerHTML   = p
+      ? 'vs prev period' + trendHtml(tc, p.clicks)
+      : `${fmt(ti)} parodymų · ${fmt(tr)} pasiekti`;
+
+    document.getElementById('val-ctr').textContent = ctr.toFixed(2)+'%';
+    document.getElementById('sub-ctr').innerHTML   = p
+      ? 'vs prev period' + trendHtml(ctr, pCtr)
+      : `Vid. CPC €${cpc.toFixed(3)}`;
+
+    document.getElementById('val-leads').textContent = tl || '—';
+    document.getElementById('sub-leads').innerHTML   = p && p.leads > 0
+      ? 'vs prev period' + trendHtml(tl, p.leads)
+      : (tl ? `CPL €${cpl}` : 'Nėra konversijų');
   }
 
   function renderCharts(idx, filtered = allCampaigns) {
