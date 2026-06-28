@@ -3,6 +3,7 @@ credentials.json
 clients-config.json
 clients.json
 reports-config.json
+smtp-config.php
 .htpasswd
 
 # Claude Code internal

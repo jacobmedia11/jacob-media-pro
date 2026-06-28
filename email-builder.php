@@ -1,9 +1,5 @@
 <?php
-define('SMTP_HOST', 'smtp.hostinger.com');
-define('SMTP_PORT', 465);
-define('SMTP_USER', 'noreply@klientams.jokubomokymai.lt');
-define('SMTP_PASS', 'Jn0@vAH7Nb^');
-define('FROM_NAME', 'Jacob Media Pro');
+require_once __DIR__ . '/smtp-config.php';
 
 function fetchMetaData($account, $token, $preset) {
   $fields = 'campaign_name,spend,impressions,clicks,ctr,cpc,actions';
