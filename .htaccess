@@ -1,0 +1,16 @@
+# Block direct access to sensitive files
+<FilesMatch "\.(json|txt|log)$">
+  Order Allow,Deny
+  Deny from all
+</FilesMatch>
+
+<Files "clients-config.json">
+  Order Allow,Deny
+  Deny from all
+</Files>
+
+# Redirect old hub.html to the PHP-protected hub.php
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^hub\.html$ hub.php [R=301,L]
+</IfModule>

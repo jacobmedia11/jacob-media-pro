@@ -1,0 +1,34 @@
+# Sensitive config — never commit these
+credentials.json
+clients-config.json
+clients.json
+reports-config.json
+.htpasswd
+
+# Claude Code internal
+.claude/
+
+# Old/generated files
+hub.html
+*.pdf
+*.zip
+meta-dashboard.html
+sofora-dashboard.html
+zvaigzdziu-slenis-dashboard.html
+mentaline-aritmetika-dashboard.html
+sanforas-dashboard/
+sanforas-dashboard.zip
+dashboards/
+invoices/
+reports/
+IKELTI/
+
+# Python
+__pycache__/
+*.pyc
+generate_invoice.py
+html_to_pdf.py
+invoice_template.html
+
+# Logs
+access-log.php

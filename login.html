@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prisijungimas — Jacob Media Pro</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --text: #f0f0f0;
+    --muted: #888;
+    --accent: #E8720A;
+    --red: #f87171;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 40px;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .login-logo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  .login-logo span { color: var(--accent); }
+
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: var(--accent);
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -0.5px;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+
+  .login-sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 32px;
+  }
+
+  .login-box label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .login-box input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    margin-bottom: 12px;
+  }
+
+  .login-box input:focus { border-color: var(--accent); }
+
+  .login-error {
+    color: var(--red);
+    font-size: 12px;
+    margin-top: -4px;
+    margin-bottom: 10px;
+    display: none;
+  }
+
+  .login-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .login-btn:hover { background: #c45a00; }
+  .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="login-logo"><span class="logo-badge">JMP</span>Jacob<span>Media Pro</span></div>
+  <div class="login-sub">Reklama, kuri neša rezultatus 💥</div>
+  <label>Vartotojo vardas</label>
+  <input type="text" id="login-user" placeholder="Vartotojo vardas" onkeydown="if(event.key==='Enter') doLogin()">
+  <label>Slaptažodis</label>
+  <input type="password" id="login-input" placeholder="••••••••••••" onkeydown="if(event.key==='Enter') doLogin()">
+  <div class="login-error" id="login-error"></div>
+  <button class="login-btn" id="login-btn" onclick="doLogin()">Prisijungti</button>
+</div>
+
+<script>
+  async function doLogin() {
+    const errEl = document.getElementById('login-error');
+    const btn   = document.getElementById('login-btn');
+    const user  = document.getElementById('login-user').value.trim();
+    const pass  = document.getElementById('login-input').value;
+
+    if (!user || !pass) {
+      errEl.textContent = 'Užpildykite visus laukus.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '...';
+    errEl.style.display = 'none';
+
+    try {
+      const res  = await fetch('login.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, pass }),
+        credentials: 'same-origin'
+      });
+      const json = await res.json();
+
+      if (json.ok) {
+        window.location.href = 'hub.php';
+      } else {
+        errEl.textContent = json.error || 'Neteisingi duomenys.';
+        errEl.style.display = 'block';
+        document.getElementById('login-input').value = '';
+        btn.disabled = false;
+        btn.textContent = 'Prisijungti';
+      }
+    } catch (e) {
+      errEl.textContent = 'Ryšio klaida. Bandykite dar kartą.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Prisijungti';
+    }
+  }
+
+  // Focus username field on load
+  document.getElementById('login-user').focus();
+</script>
+</body>
+</html>
