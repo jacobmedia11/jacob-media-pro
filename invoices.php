@@ -1,14 +1,17 @@
 <?php
 session_start();
-if (empty($_SESSION['authed'])) { http_response_code(401); exit; }
 
-$CONFIG_FILE = __DIR__ . '/clients-config.json';
-$LOG_FILE    = __DIR__ . '/invoices-log.json';
+require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/db.php';
 
-$cfg     = json_decode(file_get_contents($CONFIG_FILE), true);
-$clients = [];
-foreach ($cfg['clients'] as $c) {
-  $clients[$c['id']] = $c;
+requireAdmin();
+
+$LOG_FILE = __DIR__ . '/invoices-log.json';
+
+$allClients = dbGetClients();
+$clients    = [];
+foreach ($allClients as $c) {
+    $clients[$c['id']] = $c;
 }
 
 $action = $_GET['action'] ?? 'list';

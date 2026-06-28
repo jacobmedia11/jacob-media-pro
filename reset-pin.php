@@ -2,54 +2,38 @@
 session_start();
 header('Content-Type: application/json');
 
-if (empty($_SESSION['authed'])) {
-  http_response_code(401);
-  echo json_encode(['ok' => false, 'error' => 'Unauthorized']);
-  exit;
-}
-
+require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/email-builder.php';
+
+requireAdmin();
 
 $body     = json_decode(file_get_contents('php://input'), true);
 $clientId = trim($body['clientId'] ?? '');
 
 if (!$clientId) {
-  echo json_encode(['ok' => false, 'error' => 'Trūksta kliento ID.']);
-  exit;
+    echo json_encode(['ok' => false, 'error' => 'Trūksta kliento ID.']);
+    exit;
 }
 
-$CONFIG = __DIR__ . '/clients-config.json';
-$cfg    = json_decode(file_get_contents($CONFIG), true);
-
-$found       = false;
-$pin         = '';
-$clientName  = '';
-$clientEmail = '';
-
-foreach ($cfg['clients'] as &$c) {
-  if ($c['id'] === $clientId) {
-    $pin         = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
-    $c['pin']    = $pin;
-    $clientName  = $c['name'];
-    $clientEmail = $c['email'] ?? '';
-    $found       = true;
-    break;
-  }
+$client = dbGetClient($clientId);
+if (!$client) {
+    echo json_encode(['ok' => false, 'error' => 'Klientas nerastas.']);
+    exit;
 }
 
-if (!$found) {
-  echo json_encode(['ok' => false, 'error' => 'Klientas nerastas.']);
-  exit;
-}
+$pin         = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+$clientName  = $client['name'];
+$clientEmail = $client['email'] ?? '';
 
-file_put_contents($CONFIG, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+dbUpdateClient($clientId, ['pin' => $pin]);
+auditLog('pin_reset', "id={$clientId} name={$clientName}");
 
-// Send new PIN by email if client has one
 $emailSent = false;
 if ($clientEmail) {
-  $url     = 'https://klientams.jokubomokymai.lt/hub.php?client=' . urlencode($clientId);
-  $subject = 'Jūsų naujas PIN kodas — Jacob Media Pro';
-  $html    = "<!DOCTYPE html><html><body style='background:#0a0a0a;margin:0;padding:32px;font-family:sans-serif'>
+    $url     = 'https://klientams.jokubomokymai.lt/hub.php?client=' . urlencode($clientId);
+    $subject = 'Jūsų naujas PIN kodas — Jacob Media Pro';
+    $html    = "<!DOCTYPE html><html><body style='background:#0a0a0a;margin:0;padding:32px;font-family:sans-serif'>
   <table width='600' style='margin:0 auto;background:#111;border-radius:12px;padding:32px'>
     <tr><td>
       <div style='margin-bottom:24px'>
@@ -78,8 +62,8 @@ if ($clientEmail) {
   </table>
 </body></html>";
 
-  $result    = smtpSend($clientEmail, $subject, $html);
-  $emailSent = ($result === 'OK');
+    $result    = smtpSend($clientEmail, $subject, $html);
+    $emailSent = ($result === 'OK');
 }
 
 echo json_encode(['ok' => true, 'pin' => $pin, 'emailSent' => $emailSent, 'email' => $clientEmail]);

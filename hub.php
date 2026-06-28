@@ -1,12 +1,13 @@
 <?php
 session_start();
 
+require_once __DIR__ . '/auth.php';
+
 // Allow public client PIN-access via ?client=xxx without admin session
 $clientParam = $_GET['client'] ?? '';
 
-if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
-    header('Location: login.html');
-    exit;
+if (!$clientParam) {
+    checkAdminPage(); // enforces auth + idle timeout, redirects to login.html if expired
 }
 ?>
 <!DOCTYPE html>

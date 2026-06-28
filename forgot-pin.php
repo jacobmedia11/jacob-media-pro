@@ -2,12 +2,15 @@
 session_start();
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/email-builder.php';
+
 $body     = json_decode(file_get_contents('php://input'), true);
 $clientId = preg_replace('/[^a-z0-9\-]/', '', $body['clientId'] ?? '');
 
 if (!$clientId) {
-  echo json_encode(['ok' => false, 'error' => 'Nenurodyta paskyra.']);
-  exit;
+    echo json_encode(['ok' => false, 'error' => 'Nenurodyta paskyra.']);
+    exit;
 }
 
 // Rate limit: max 3 resets per client per hour
@@ -15,51 +18,35 @@ $rateKey  = 'forgot_pin_' . $clientId;
 $rateData = $_SESSION[$rateKey] ?? ['count' => 0, 'reset' => time() + 3600];
 
 if (time() > $rateData['reset']) {
-  $rateData = ['count' => 0, 'reset' => time() + 3600];
+    $rateData = ['count' => 0, 'reset' => time() + 3600];
 }
 
 if ($rateData['count'] >= 3) {
-  $wait = ceil(($rateData['reset'] - time()) / 60);
-  echo json_encode(['ok' => false, 'error' => "Per daug bandymų. Bandykite po {$wait} min."]);
-  exit;
+    $wait = ceil(($rateData['reset'] - time()) / 60);
+    echo json_encode(['ok' => false, 'error' => "Per daug bandymų. Bandykite po {$wait} min."]);
+    exit;
 }
 
 $rateData['count']++;
 $_SESSION[$rateKey] = $rateData;
 
-// Load client
-$CONFIG = __DIR__ . '/clients-config.json';
-$cfg    = json_decode(file_get_contents($CONFIG), true);
+$client = dbGetClient($clientId);
 
-$found       = false;
-$pin         = '';
-$clientName  = '';
-$clientEmail = '';
-
-foreach ($cfg['clients'] as &$c) {
-  if ($c['id'] === $clientId) {
-    $pin         = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
-    $c['pin']    = $pin;
-    $clientName  = $c['name'];
-    $clientEmail = $c['email'] ?? '';
-    $found       = true;
-    break;
-  }
+if (!$client) {
+    echo json_encode(['ok' => false, 'error' => 'Paskyra nerasta.']);
+    exit;
 }
 
-if (!$found) {
-  echo json_encode(['ok' => false, 'error' => 'Paskyra nerasta.']);
-  exit;
-}
-
+$clientEmail = $client['email'] ?? '';
 if (!$clientEmail) {
-  echo json_encode(['ok' => false, 'error' => 'Šiai paskyrai el. paštas nenurodytas. Susisiekite su administratoriumi.']);
-  exit;
+    echo json_encode(['ok' => false, 'error' => 'Šiai paskyrai el. paštas nenurodytas. Susisiekite su administratoriumi.']);
+    exit;
 }
 
-file_put_contents($CONFIG, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+$pin        = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+$clientName = $client['name'];
 
-require_once __DIR__ . '/email-builder.php';
+dbUpdateClient($clientId, ['pin' => $pin]);
 
 $url     = 'https://klientams.jokubomokymai.lt/hub.php?client=' . urlencode($clientId);
 $subject = 'Jūsų naujas PIN kodas — Jacob Media Pro';
@@ -95,10 +82,9 @@ $html    = "<!DOCTYPE html><html><body style='background:#0a0a0a;margin:0;paddin
 $result = smtpSend($clientEmail, $subject, $html);
 
 if ($result === 'OK') {
-  // Mask email for privacy: show only first 2 chars + domain
-  $parts  = explode('@', $clientEmail);
-  $masked = substr($parts[0], 0, 2) . str_repeat('*', max(2, strlen($parts[0]) - 2)) . '@' . ($parts[1] ?? '');
-  echo json_encode(['ok' => true, 'email' => $masked]);
+    $parts  = explode('@', $clientEmail);
+    $masked = substr($parts[0], 0, 2) . str_repeat('*', max(2, strlen($parts[0]) - 2)) . '@' . ($parts[1] ?? '');
+    echo json_encode(['ok' => true, 'email' => $masked]);
 } else {
-  echo json_encode(['ok' => false, 'error' => 'Nepavyko išsiųsti el. laiško. Susisiekite su administratoriumi.']);
+    echo json_encode(['ok' => false, 'error' => 'Nepavyko išsiųsti el. laiško. Susisiekite su administratoriumi.']);
 }

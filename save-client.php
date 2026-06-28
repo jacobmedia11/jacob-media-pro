@@ -2,107 +2,98 @@
 session_start();
 header('Content-Type: application/json');
 
-if (empty($_SESSION['authed'])) {
-  http_response_code(401);
-  echo json_encode(['ok' => false, 'error' => 'Unauthorized']);
-  exit;
-}
-
+require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/email-builder.php';
 
-$CONFIG = __DIR__ . '/clients-config.json';
-$body   = json_decode(file_get_contents('php://input'), true);
+requireAdmin();
 
+$body   = json_decode(file_get_contents('php://input'), true);
 $action = $body['action'] ?? 'add';
 
-// ── Update client ─────────────────────────────────────────────────────────
+// ── Update client ──────────────────────────────────────────────────────────
 if ($action === 'update') {
-  $id       = trim($body['id']      ?? '');
-  $name     = trim($body['name']    ?? '');
-  $account  = trim($body['account'] ?? '');
-  $email    = trim($body['email']   ?? '');
-  $excluded = $body['excluded'] ?? [];
-  $cfg = json_decode(file_get_contents($CONFIG), true);
-  foreach ($cfg['clients'] as &$c) {
-    if ($c['id'] === $id) {
-      $c['name']     = $name;
-      $c['account']  = $account;
-      $c['email']    = $email;
-      $c['excluded'] = $excluded;
-      if (!empty($body['token'])) {
-        $c['token'] = trim($body['token']);
-        unset($c['token_error'], $c['token_error_at']);
-      }
-      break;
+    $id       = trim($body['id']      ?? '');
+    $name     = trim($body['name']    ?? '');
+    $account  = trim($body['account'] ?? '');
+    $email    = trim($body['email']   ?? '');
+    $excluded = $body['excluded'] ?? [];
+
+    $fields = [
+        'name'     => $name,
+        'account'  => $account,
+        'email'    => $email,
+        'excluded' => json_encode($excluded),
+    ];
+    if (!empty($body['token'])) {
+        $fields['token']          = trim($body['token']);
+        $fields['token_error']    = null;
+        $fields['token_error_at'] = null;
     }
-  }
-  file_put_contents($CONFIG, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-  echo json_encode(['ok' => true]);
-  exit;
+
+    dbUpdateClient($id, $fields);
+    auditLog('client_update', "id={$id} name={$name}");
+    echo json_encode(['ok' => true]);
+    exit;
 }
 
 // ── Delete client ──────────────────────────────────────────────────────────
 if ($action === 'delete') {
-  $id  = trim($body['id'] ?? '');
-  $cfg = json_decode(file_get_contents($CONFIG), true);
-  $cfg['clients'] = array_values(array_filter($cfg['clients'], fn($c) => $c['id'] !== $id));
-  file_put_contents($CONFIG, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-  echo json_encode(['ok' => true]);
-  exit;
+    $id = trim($body['id'] ?? '');
+    $c  = dbGetClient($id);
+    dbDeleteClient($id);
+    auditLog('client_delete', "id={$id} name=" . ($c['name'] ?? ''));
+    echo json_encode(['ok' => true]);
+    exit;
 }
 
 // ── Add client ─────────────────────────────────────────────────────────────
-$name    = trim($body['name']    ?? '');
-$account = trim($body['account'] ?? '');
-$token   = trim($body['token']   ?? '');
-$email   = trim($body['email']   ?? '');
+$name     = trim($body['name']    ?? '');
+$account  = trim($body['account'] ?? '');
+$token    = trim($body['token']   ?? '');
+$email    = trim($body['email']   ?? '');
 $excluded = $body['excluded'] ?? [];
 
 if (!$name || !$account) {
-  echo json_encode(['ok' => false, 'error' => 'Vardas ir paskyra būtini.']);
-  exit;
+    echo json_encode(['ok' => false, 'error' => 'Vardas ir paskyra būtini.']);
+    exit;
 }
 
-// Generate slug ID
-function slugify($text) {
-  $map = ['ą'=>'a','č'=>'c','ę'=>'e','ė'=>'e','į'=>'i','š'=>'s','ų'=>'u','ū'=>'u','ž'=>'z',
-          'Ą'=>'a','Č'=>'c','Ę'=>'e','Ė'=>'e','Į'=>'i','Š'=>'s','Ų'=>'u','Ū'=>'u','Ž'=>'z'];
-  $text = strtr($text, $map);
-  $text = strtolower($text);
-  $text = preg_replace('/[^a-z0-9]+/', '-', $text);
-  return trim($text, '-');
+function slugify(string $text): string {
+    $map  = ['ą'=>'a','č'=>'c','ę'=>'e','ė'=>'e','į'=>'i','š'=>'s','ų'=>'u','ū'=>'u','ž'=>'z',
+             'Ą'=>'a','Č'=>'c','Ę'=>'e','Ė'=>'e','Į'=>'i','Š'=>'s','Ų'=>'u','Ū'=>'u','Ž'=>'z'];
+    $text = strtr($text, $map);
+    $text = strtolower($text);
+    $text = preg_replace('/[^a-z0-9]+/', '-', $text);
+    return trim($text, '-');
 }
 
-$cfg = json_decode(file_get_contents($CONFIG), true);
-
-$id = slugify($name);
-// Ensure unique ID
-$existing = array_column($cfg['clients'], 'id');
-$base = $id; $i = 2;
+$id       = slugify($name);
+$existing = array_column(dbGetClients(), 'id');
+$base     = $id;
+$i        = 2;
 while (in_array($id, $existing)) { $id = $base . '-' . $i++; }
 
-// Generate random 4-digit PIN
 $pin = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
 
-$client = [
-  'id'       => $id,
-  'name'     => $name,
-  'account'  => $account,
-  'token'    => $token,
-  'email'    => $email,
-  'pin'      => $pin,
-  'excluded' => $excluded,
-];
+dbAddClient([
+    'id'       => $id,
+    'name'     => $name,
+    'account'  => $account,
+    'token'    => $token,
+    'email'    => $email,
+    'pin'      => $pin,
+    'excluded' => $excluded,
+]);
 
-$cfg['clients'][] = $client;
-file_put_contents($CONFIG, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+auditLog('client_add', "id={$id} name={$name}");
 
 // Send PIN email to client
 $emailSent = false;
 if ($email) {
-  $url     = 'https://klientams.jokubomokymai.lt/hub.php?client=' . urlencode($id);
-  $subject = 'Jūsų prieiga prie ataskaitos sistemos';
-  $html    = "<!DOCTYPE html><html><body style='background:#0a0a0a;margin:0;padding:32px;font-family:sans-serif'>
+    $url     = 'https://klientams.jokubomokymai.lt/hub.php?client=' . urlencode($id);
+    $subject = 'Jūsų prieiga prie ataskaitos sistemos';
+    $html    = "<!DOCTYPE html><html><body style='background:#0a0a0a;margin:0;padding:32px;font-family:sans-serif'>
   <table width='600' style='margin:0 auto;background:#111;border-radius:12px;padding:32px'>
     <tr><td>
       <div style='margin-bottom:24px'>
@@ -131,13 +122,8 @@ if ($email) {
   </table>
 </body></html>";
 
-  $result = smtpSend($email, $subject, $html);
-  $emailSent = ($result === 'OK');
+    $result    = smtpSend($email, $subject, $html);
+    $emailSent = ($result === 'OK');
 }
 
-echo json_encode([
-  'ok'        => true,
-  'id'        => $id,
-  'pin'       => $pin,
-  'emailSent' => $emailSent,
-]);
+echo json_encode(['ok' => true, 'id' => $id, 'pin' => $pin, 'emailSent' => $emailSent]);

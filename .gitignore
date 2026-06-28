@@ -1,10 +1,12 @@
 # Sensitive config — never commit these
 credentials.json
+credentials.php
 clients-config.json
 clients.json
 reports-config.json
 smtp-config.php
 .htpasswd
+data.sqlite
 
 # Claude Code internal
 .claude/
@@ -31,4 +33,4 @@ html_to_pdf.py
 invoice_template.html
 
 # Logs
-access-log.php
+# access-log.php is now tracked (uses SQLite)
