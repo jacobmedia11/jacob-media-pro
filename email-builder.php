@@ -190,14 +190,14 @@ function smtpSend($to, $subject, $html, $pdfData = null, $pdfFilename = 'ataskai
   $sock = stream_socket_client('ssl://' . SMTP_HOST . ':' . SMTP_PORT, $errno, $errstr, 15, STREAM_CLIENT_CONNECT, $ctx);
   if (!$sock) return "Connect error: $errstr";
 
-  function _r($s) { return fgets($s, 512); }
-  function _w($s, $c) { fwrite($s, $c . "\r\n"); }
+  $r = fn($s) => fgets($s, 512);
+  $w = fn($s, $c) => fwrite($s, $c . "\r\n");
 
-  _r($sock);
-  _w($sock, 'EHLO ' . gethostname()); while (($l = _r($sock)) && substr($l, 3, 1) === '-');
-  _w($sock, 'AUTH LOGIN');              _r($sock);
-  _w($sock, base64_encode(SMTP_USER));  _r($sock);
-  _w($sock, base64_encode(SMTP_PASS));  $auth = _r($sock);
+  $r($sock);
+  $w($sock, 'EHLO ' . gethostname()); while (($l = $r($sock)) && substr($l, 3, 1) === '-');
+  $w($sock, 'AUTH LOGIN');              $r($sock);
+  $w($sock, base64_encode(SMTP_USER));  $r($sock);
+  $w($sock, base64_encode(SMTP_PASS));  $auth = $r($sock);
   if (strpos($auth, '235') === false) { fclose($sock); return "Auth failed: $auth"; }
 
   $boundary = '----=_Boundary_' . md5(uniqid());
@@ -226,11 +226,11 @@ function smtpSend($to, $subject, $html, $pdfData = null, $pdfFilename = 'ataskai
     $msg .= chunk_split(base64_encode($html));
   }
 
-  _w($sock, "MAIL FROM:<" . SMTP_USER . ">"); _r($sock);
-  _w($sock, "RCPT TO:<$to>");                  _r($sock);
-  _w($sock, "DATA");                            _r($sock);
-  _w($sock, $msg . "\r\n.");                    $res = _r($sock);
-  _w($sock, "QUIT");
+  $w($sock, "MAIL FROM:<" . SMTP_USER . ">"); $r($sock);
+  $w($sock, "RCPT TO:<$to>");                  $r($sock);
+  $w($sock, "DATA");                            $r($sock);
+  $w($sock, $msg . "\r\n.");                    $res = $r($sock);
+  $w($sock, "QUIT");
   fclose($sock);
 
   return strpos($res, '250') !== false ? 'OK' : "Send error: $res";

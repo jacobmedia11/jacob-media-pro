@@ -16,6 +16,28 @@ foreach ($clientsCfg['clients'] as $c) {
   if (!empty($c['token'])) $TOKENS[$c['account']] = $c['token'];
 }
 
+// Auto-create reports-config.json if missing (first-run on server)
+if (!file_exists($CONFIG_FILE)) {
+  $defaultClients = [];
+  foreach ($clientsCfg['clients'] as $c) {
+    $defaultClients[] = [
+      'id'          => $c['id'],
+      'name'        => $c['name'],
+      'account'     => $c['account'],
+      'email'       => $c['email'] ?? '',
+      'schedule'    => 'weekly',
+      'email_intro' => '',
+    ];
+  }
+  file_put_contents($CONFIG_FILE, json_encode([
+    'owner_email'    => 'jokuubas11@gmail.com',
+    'owner_schedule' => 'weekly',
+    'email_subject'  => 'Savaitinė Meta Ads ataskaita',
+    'clients'        => $defaultClients,
+    'last_sent'      => (object)[],
+  ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
+
 $VALID_SCHEDULES = ['daily', 'weekly', 'monthly', 'none'];
 
 function loadConfig($file) {
