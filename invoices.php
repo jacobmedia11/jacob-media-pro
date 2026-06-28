@@ -2,9 +2,16 @@
 session_start();
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/db.php';
 
 requireAdmin();
+
+// Verify CSRF for all state-changing actions
+$_action = $_GET['action'] ?? 'list';
+if (!in_array($_action, ['list', 'client', 'preview'])) {
+    verifyCsrf();
+}
 
 $LOG_FILE = __DIR__ . '/invoices-log.json';
 

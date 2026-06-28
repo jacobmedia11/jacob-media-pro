@@ -5,6 +5,7 @@ clients-config.json
 clients.json
 reports-config.json
 smtp-config.php
+config.php
 .htpasswd
 data.sqlite
 

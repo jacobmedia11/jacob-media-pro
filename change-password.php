@@ -3,9 +3,11 @@ session_start();
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/db.php';
 
 requireAdmin();
+verifyCsrf();
 
 $body        = json_decode(file_get_contents('php://input'), true);
 $currentPass = $body['current'] ?? '';

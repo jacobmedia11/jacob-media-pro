@@ -1,16 +1,72 @@
-# Block direct access to sensitive files
-<FilesMatch "\.(json|txt|log)$">
+# ── HTTPS redirect ────────────────────────────────────────────────────────────
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Force HTTPS (works behind Hostinger proxy via X-Forwarded-Proto)
+  RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+  # Legacy redirect
+  RewriteRule ^hub\.html$ hub.php [R=301,L]
+</IfModule>
+
+# ── Security headers ───────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+  # Prevent page from being embedded in iframes (clickjacking)
+  Header always set X-Frame-Options "DENY"
+
+  # Stop MIME-type sniffing
+  Header always set X-Content-Type-Options "nosniff"
+
+  # Don't send Referer header to external sites
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # Force HTTPS for 1 year once visited over HTTPS
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+  # Content Security Policy
+  # unsafe-inline required for hub.php's inline scripts/styles; all external
+  # script/font sources are whitelisted explicitly.
+  Header always set Content-Security-Policy "\
+default-src 'self'; \
+script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; \
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+font-src 'self' https://fonts.gstatic.com data:; \
+connect-src 'self'; \
+img-src 'self' data:; \
+frame-ancestors 'none'; \
+object-src 'none'; \
+base-uri 'self'"
+</IfModule>
+
+# ── Block direct access to sensitive files ─────────────────────────────────────
+<FilesMatch "\.(json|txt|log|sqlite|example)$">
   Order Allow,Deny
   Deny from all
 </FilesMatch>
 
-<Files "clients-config.json">
+<FilesMatch "^(config|credentials|smtp-config|db|auth|csrf)\.php$">
   Order Allow,Deny
   Deny from all
-</Files>
+</FilesMatch>
 
-# Redirect old hub.html to the PHP-protected hub.php
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteRule ^hub\.html$ hub.php [R=301,L]
+# ── Harden PHP session cookies (httponly, secure, samesite) ───────────────────
+<IfModule mod_php.c>
+  php_flag  session.cookie_httponly  On
+  php_flag  session.cookie_secure    On
+  php_value session.cookie_samesite  Strict
+  php_flag  session.use_strict_mode  On
+  php_flag  display_errors           Off
+  php_value error_reporting          0
+</IfModule>
+
+# php-fpm variant (Hostinger may use either)
+<IfModule mod_php8.c>
+  php_flag  session.cookie_httponly  On
+  php_flag  session.cookie_secure    On
+  php_value session.cookie_samesite  Strict
+  php_flag  session.use_strict_mode  On
+  php_flag  display_errors           Off
+  php_value error_reporting          0
 </IfModule>

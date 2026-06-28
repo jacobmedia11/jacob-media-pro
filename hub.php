@@ -2,6 +2,7 @@
 session_start();
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/csrf.php';
 
 // Allow public client PIN-access via ?client=xxx without admin session
 $clientParam = $_GET['client'] ?? '';
@@ -9,6 +10,8 @@ $clientParam = $_GET['client'] ?? '';
 if (!$clientParam) {
     checkAdminPage(); // enforces auth + idle timeout, redirects to login.html if expired
 }
+
+$csrfToken = generateCsrfToken();
 ?>
 <!DOCTYPE html>
 <html lang="lt">
@@ -792,6 +795,19 @@ if (!$clientParam) {
 </div>
 
 <script>
+  // ── CSRF: inject token on every mutating request automatically ────────
+  const CSRF_TOKEN = <?= json_encode($csrfToken) ?>;
+  (function () {
+    const _orig = window.fetch.bind(window);
+    window.fetch = (url, opts = {}) => {
+      const method = (opts.method || 'GET').toUpperCase();
+      if (method !== 'GET' && method !== 'HEAD') {
+        opts.headers = Object.assign({'X-CSRF-Token': CSRF_TOKEN}, opts.headers || {});
+      }
+      return _orig(url, opts);
+    };
+  })();
+
   // ── Auth ──────────────────────────────────────────────────────────────
   async function forgotPin() {
     const clientId = new URLSearchParams(window.location.search).get('client');

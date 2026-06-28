@@ -3,10 +3,12 @@ session_start();
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/email-builder.php';
 
 requireAdmin();
+verifyCsrf();
 
 $body   = json_decode(file_get_contents('php://input'), true);
 $action = $body['action'] ?? 'add';

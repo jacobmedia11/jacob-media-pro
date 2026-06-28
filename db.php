@@ -4,6 +4,9 @@
  * On first run, migrates existing JSON data automatically.
  */
 
+// Load app-level secrets (TOKEN_ENCRYPTION_KEY, etc.) if present
+if (file_exists(__DIR__ . '/config.php')) require_once __DIR__ . '/config.php';
+
 define('DB_PATH', __DIR__ . '/data.sqlite');
 
 function getDb(): PDO {
@@ -74,7 +77,7 @@ function _dbMigrateJson(PDO $db): void {
             $c['id'],
             $c['name'],
             $c['account'],
-            $c['token'] ?? '',
+            encryptToken($c['token'] ?? ''),
             $c['email'] ?? '',
             $c['pin'] ?? '',
             json_encode($c['excluded'] ?? []),
@@ -104,6 +107,39 @@ function _dbMigrateJson(PDO $db): void {
     $db->commit();
 }
 
+// ── Token encryption (AES-256-GCM) ────────────────────────────────────────
+// Requires TOKEN_ENCRYPTION_KEY defined in config.php (64 hex chars = 32 bytes).
+// Falls back to plaintext if the key is absent — existing tokens still work.
+
+function _tokenKeyAvailable(): bool {
+    return defined('TOKEN_ENCRYPTION_KEY')
+        && strlen(TOKEN_ENCRYPTION_KEY) === 64
+        && TOKEN_ENCRYPTION_KEY !== 'REPLACE_WITH_64_HEX_CHARS_FROM_php_minus_r_bin2hex_random_bytes_32'
+        && function_exists('openssl_encrypt');
+}
+
+function encryptToken(string $plain): string {
+    if (empty($plain) || !_tokenKeyAvailable()) return $plain;
+    $key    = hex2bin(TOKEN_ENCRYPTION_KEY);
+    $iv     = random_bytes(12);
+    $tag    = '';
+    $cipher = openssl_encrypt($plain, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag, '', 16);
+    return 'enc:' . base64_encode($iv . $tag . $cipher);
+}
+
+function decryptToken(string $stored): string {
+    if (empty($stored)) return '';
+    if (strpos($stored, 'enc:') !== 0) return $stored; // legacy plaintext passthrough
+    if (!_tokenKeyAvailable()) return '';               // key missing — refuse to return garbled data
+    $raw    = base64_decode(substr($stored, 4));
+    $key    = hex2bin(TOKEN_ENCRYPTION_KEY);
+    $iv     = substr($raw, 0, 12);
+    $tag    = substr($raw, 12, 16);
+    $cipher = substr($raw, 28);
+    $plain  = openssl_decrypt($cipher, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
+    return $plain !== false ? $plain : '';
+}
+
 // ── Client helpers ─────────────────────────────────────────────────────────
 
 function dbGetClients(): array {
@@ -127,6 +163,7 @@ function dbGetClientByAccount(string $account): ?array {
 
 function _dbDecodeClient(array $row): array {
     $row['excluded'] = json_decode($row['excluded'] ?? '[]', true) ?: [];
+    $row['token']    = decryptToken($row['token'] ?? '');
     $meta = json_decode($row['meta'] ?? '{}', true) ?: [];
     foreach ($meta as $k => $v) {
         if (!isset($row[$k])) $row[$k] = $v;
@@ -144,7 +181,7 @@ function dbAddClient(array $c): void {
         $c['id'],
         $c['name'],
         $c['account'],
-        $c['token'] ?? '',
+        encryptToken($c['token'] ?? ''),
         $c['email'] ?? '',
         $c['pin'] ?? '',
         json_encode($c['excluded'] ?? []),
@@ -154,6 +191,7 @@ function dbAddClient(array $c): void {
 
 function dbUpdateClient(string $id, array $fields): void {
     if (empty($fields)) return;
+    if (isset($fields['token'])) $fields['token'] = encryptToken($fields['token']);
     $sets = [];
     $vals = [];
     foreach ($fields as $k => $v) {

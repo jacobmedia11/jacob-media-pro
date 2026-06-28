@@ -1,0 +1,7 @@
+<?php
+/**
+ * Copy this file to config.php (never commit that copy).
+ * Generate a key:  php -r "echo bin2hex(random_bytes(32));"
+ * Paste the 64-char hex string below.
+ */
+define('TOKEN_ENCRYPTION_KEY', 'REPLACE_WITH_64_HEX_CHARS_FROM_php_minus_r_bin2hex_random_bytes_32');
