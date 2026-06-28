@@ -15,6 +15,9 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jacob Media Pro — Klientų valdymas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,10 +39,11 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 14px;
     line-height: 1.6;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
 
   /* ── Top nav ── */
@@ -267,24 +271,54 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
 
   .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-  .card .label { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
-  .card .value { font-size: 28px; font-weight: 700; letter-spacing: -1px; color: var(--text); line-height: 1.1; }
-  .card .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 22px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .card.accent-yellow::before { background: linear-gradient(90deg, #E8720A, #f59e0b); }
+  .card.accent-blue::before   { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+  .card.accent-green::before  { background: linear-gradient(90deg, #10b981, #34d399); }
+  .card.accent-purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
 
+  .card .label { font-size: 11px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .card .value { font-size: 30px; font-weight: 800; letter-spacing: -1.5px; color: var(--text); line-height: 1.1; }
+  .card .sub   { font-size: 11px; color: var(--muted); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .card .sub .trend-up   { color: #34d399; font-weight: 600; }
+  .card .sub .trend-down { color: #f87171; font-weight: 600; }
+
+  .card.accent-yellow .value { color: #E8720A; }
+  .card.accent-blue .value   { color: #60a5fa; }
   .card.accent-green .value  { color: var(--green); }
-  .card.accent-blue .value   { color: var(--accent); }
-  .card.accent-purple .value { color: var(--accent2); }
-  .card.accent-yellow .value { color: var(--yellow); }
+  .card.accent-purple .value { color: #a78bfa; }
 
   .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
-  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
-  .chart-card h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    transition: box-shadow 0.15s;
+  }
+  .chart-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .chart-card h2 { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; color: var(--muted); text-transform: uppercase; margin-bottom: 20px; }
   .chart-wrap { position: relative; height: 220px; }
 
-  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; overflow-x: auto; }
-  .table-card h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; overflow-x: auto; }
+  .table-card h2 { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; color: var(--muted); text-transform: uppercase; margin-bottom: 18px; }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   thead th { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; }
@@ -406,24 +440,36 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
 <body>
 
 <!-- PIN view (public client access) -->
-<div id="pin-view" style="display:none;min-height:100vh;align-items:center;justify-content:center;background:#0a0a0a">
-  <div style="background:#111;border:1px solid #222;border-radius:16px;padding:40px 48px;width:340px;text-align:center">
-    <div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:8px">
-      <span style="background:#E8720A;border-radius:7px;padding:4px 10px;font-size:13px;font-weight:900;color:#fff;margin-right:10px">JMP</span>
-      <span style="font-size:20px;font-weight:800;color:#fff">Jacob<span style="color:#E8720A">Media Pro</span></span>
+<div id="pin-view" style="display:none;min-height:100vh;align-items:center;justify-content:center;background:#080808;background-image:radial-gradient(ellipse at 50% 0%, rgba(232,114,10,0.08) 0%, transparent 70%)">
+  <div style="width:360px;text-align:center;padding:20px">
+
+    <!-- Logo -->
+    <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:40px">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;background:linear-gradient(135deg,#E8720A,#c45a00);border-radius:10px;font-size:13px;font-weight:900;color:#fff;letter-spacing:-0.5px">JMP</span>
+      <span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px">Jacob<span style="color:#E8720A">Media</span></span>
     </div>
-    <div id="pin-client-name" style="color:#555;font-size:13px;margin-bottom:28px"></div>
-    <div style="color:#aaa;font-size:14px;margin-bottom:16px">Įveskite PIN kodą</div>
-    <input id="pin-input" type="password" maxlength="6" inputmode="numeric"
-      placeholder="••••"
-      onkeydown="if(event.key==='Enter') checkPin()"
-      style="width:100%;padding:14px;font-size:24px;letter-spacing:8px;text-align:center;background:#0a0a0a;border:1px solid #333;border-radius:8px;color:#fff;outline:none;box-sizing:border-box;margin-bottom:12px">
-    <div id="pin-error" style="display:none;color:#ef4444;font-size:13px;margin-bottom:12px">Neteisingas PIN kodas</div>
-    <button onclick="checkPin()" style="width:100%;padding:13px;background:#E8720A;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">Prisijungti</button>
-    <div style="margin-top:16px;text-align:center">
-      <button onclick="forgotPin()" id="forgot-btn" style="background:none;border:none;color:#555;font-size:12px;cursor:pointer;text-decoration:underline">Pamiršau PIN kodą</button>
-      <div id="forgot-msg" style="display:none;font-size:12px;margin-top:10px;padding:10px 14px;border-radius:8px"></div>
+
+    <!-- Card -->
+    <div style="background:#111;border:1px solid #1f1f1f;border-radius:20px;padding:36px 32px;box-shadow:0 24px 64px rgba(0,0,0,0.5)">
+      <div id="pin-client-name" style="color:#E8720A;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px"></div>
+      <div style="color:#fff;font-size:22px;font-weight:700;margin-bottom:4px;letter-spacing:-0.5px">Sveiki atvykę</div>
+      <div style="color:#555;font-size:13px;margin-bottom:28px">Įveskite savo PIN kodą norėdami tęsti</div>
+
+      <input id="pin-input" type="password" maxlength="6" inputmode="numeric"
+        placeholder="• • • •"
+        onkeydown="if(event.key==='Enter') checkPin()"
+        style="width:100%;padding:16px;font-size:26px;letter-spacing:10px;text-align:center;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px;color:#fff;outline:none;box-sizing:border-box;margin-bottom:8px;font-family:inherit;transition:border-color 0.2s"
+        onfocus="this.style.borderColor='#E8720A'" onblur="this.style.borderColor='#2a2a2a'">
+
+      <div id="pin-error" style="display:none;color:#f87171;font-size:12px;margin-bottom:12px;padding:8px 12px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px">Neteisingas PIN kodas</div>
+
+      <button onclick="checkPin()" style="width:100%;padding:14px;background:linear-gradient(135deg,#E8720A,#c45a00);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;margin-bottom:20px" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Prisijungti</button>
+
+      <button onclick="forgotPin()" id="forgot-btn" style="background:none;border:none;color:#444;font-size:12px;cursor:pointer;font-family:inherit;transition:color 0.15s" onmouseover="this.style.color='#888'" onmouseout="this.style.color='#444'">Pamiršau PIN kodą</button>
+      <div id="forgot-msg" style="display:none;font-size:12px;margin-top:12px;padding:10px 14px;border-radius:10px"></div>
     </div>
+
+    <div style="color:#2a2a2a;font-size:11px;margin-top:24px">© Jacob Media Pro</div>
   </div>
 </div>
 
@@ -1215,32 +1261,38 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
     if (spendChart) spendChart.destroy();
     if (convChart)  convChart.destroy();
 
-    spendChart = new Chart(document.getElementById('spendChart'), {
+    const spendCtx = document.getElementById('spendChart');
+    const spendGrad = spendCtx.getContext('2d').createLinearGradient(0, 0, 0, 220);
+    spendGrad.addColorStop(0, 'rgba(232,114,10,0.85)');
+    spendGrad.addColorStop(1, 'rgba(232,114,10,0.25)');
+
+    spendChart = new Chart(spendCtx, {
       type:'bar',
-      data:{ labels:list.map(c=>c.name), datasets:[{
+      data:{ labels:list.map(c=>c.name.length>18?c.name.slice(0,18)+'…':c.name), datasets:[{
         data:list.map(c=>c.spend),
-        backgroundColor:list.map(c=>c.color.bg),
-        borderColor:list.map(c=>c.color.border),
-        borderWidth:1.5, borderRadius:6
+        backgroundColor: list.length === 1 ? spendGrad : list.map(c=>c.color.bg),
+        borderColor: list.length === 1 ? '#E8720A' : list.map(c=>c.color.border),
+        borderWidth:1.5, borderRadius:8, borderSkipped:false
       }]},
       options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>` €${ctx.parsed.y.toFixed(2)}` }}},
-        scales:{ x:{grid:DG, ticks:{...DT,maxRotation:20}}, y:{grid:DG, ticks:{...DT,callback:v=>'€'+v}, beginAtZero:true} }
+        plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1a1a1a', borderColor:'#333', borderWidth:1, titleColor:'#aaa', bodyColor:'#fff', callbacks:{ label:ctx=>` €${ctx.parsed.y.toFixed(2)}` }}},
+        scales:{ x:{grid:{color:'rgba(255,255,255,0.03)'}, ticks:{color:'#555',font:{size:11},maxRotation:20}}, y:{grid:{color:'rgba(255,255,255,0.03)'}, ticks:{color:'#555',font:{size:11},callback:v=>'€'+v}, beginAtZero:true, border:{display:false}} }
       }
     });
 
     convChart = new Chart(document.getElementById('convChart'), {
       type:'bar',
-      data:{ labels:list.map(c=>c.name), datasets:[
-        { label:'Paspaudimai', data:list.map(c=>c.clicks), backgroundColor:'rgba(79,142,247,0.75)', borderColor:'rgba(79,142,247,1)', borderWidth:1.5, borderRadius:6 },
-        { label:'Potenc. klientai', data:list.map(c=>c.leads), backgroundColor:'rgba(52,211,153,0.75)', borderColor:'rgba(52,211,153,1)', borderWidth:1.5, borderRadius:6, yAxisID:'y2' }
+      data:{ labels:list.map(c=>c.name.length>18?c.name.slice(0,18)+'…':c.name), datasets:[
+        { label:'Paspaudimai', data:list.map(c=>c.clicks), backgroundColor:'rgba(96,165,250,0.7)', borderColor:'rgba(96,165,250,1)', borderWidth:1.5, borderRadius:8, borderSkipped:false },
+        { label:'Potenc. klientai', data:list.map(c=>c.leads), backgroundColor:'rgba(52,211,153,0.7)', borderColor:'rgba(52,211,153,1)', borderWidth:1.5, borderRadius:8, borderSkipped:false, yAxisID:'y2' }
       ]},
       options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ display:true, labels:{ color:'#7b8199', font:{size:11}, boxWidth:12, padding:14 }}},
+        plugins:{ legend:{ display:true, labels:{ color:'#666', font:{size:11,family:'Inter'}, boxWidth:10, boxHeight:10, borderRadius:3, padding:16, usePointStyle:true }},
+          tooltip:{ backgroundColor:'#1a1a1a', borderColor:'#333', borderWidth:1, titleColor:'#aaa', bodyColor:'#fff' }},
         scales:{
-          x:{grid:DG, ticks:{...DT,maxRotation:20}},
-          y:{grid:DG, ticks:DT, beginAtZero:true, title:{display:true,text:'Paspaudimai',color:'#7b8199',font:{size:11}}},
-          y2:{position:'right', grid:{display:false}, ticks:DT, beginAtZero:true, title:{display:true,text:'Potenc. klientai',color:'#34d399',font:{size:11}}}
+          x:{grid:{color:'rgba(255,255,255,0.03)'}, ticks:{color:'#555',font:{size:11},maxRotation:20}, border:{display:false}},
+          y:{grid:{color:'rgba(255,255,255,0.03)'}, ticks:{color:'#555',font:{size:11}}, beginAtZero:true, border:{display:false}},
+          y2:{position:'right', grid:{display:false}, ticks:{color:'#34d399',font:{size:11}}, beginAtZero:true, border:{display:false}}
         }
       }
     });
