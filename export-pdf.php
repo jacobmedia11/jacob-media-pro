@@ -30,18 +30,19 @@ if (!$token) { echo 'Token not found'; exit; }
 
 require_once __DIR__ . '/email-builder.php';
 
-$block    = buildBlock($name, $account, $token, $preset);
-$subject  = 'Meta Ads ataskaita';
-$html     = buildEmail($name, $block, $preset, $subject, '');
-$filename = $name . '-' . date('Y-m-d') . '.pdf';
-$pdf      = generatePdf($html, $filename);
+$block   = buildBlock($name, $account, $token, $preset);
+$subject = 'Meta Ads ataskaita';
+$html    = buildEmail($name, $block, $preset, $subject, '');
 
-if (!$pdf) {
-  echo 'PDF generavimas nepavyko. Įdiekite DOMPDF: composer install';
-  exit;
-}
+// Output HTML with print trigger — user saves as PDF via browser dialog
+$printHtml = str_replace('</body>', '
+<style>
+  @media print {
+    body { background: #fff !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
+</style>
+<script>window.onload = function(){ window.print(); }</script>
+</body>', $html);
 
-header('Content-Type: application/pdf');
-header('Content-Disposition: attachment; filename="' . $filename . '"');
-header('Content-Length: ' . strlen($pdf));
-echo $pdf;
+echo $printHtml;
