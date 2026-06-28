@@ -1028,7 +1028,7 @@ if (!$clientParam && (!isset($_SESSION['authed']) || !$_SESSION['authed'])) {
             <div style="font-size:32px;margin-bottom:16px">🧾</div>
             <div style="color:var(--text);font-size:15px;font-weight:600;margin-bottom:8px">View your Meta invoices</div>
             <div style="color:var(--muted);font-size:13px;margin-bottom:24px">Click below to open your billing page in Meta Business Manager</div>
-            <a href="https://business.facebook.com/billing?act=${currentClient.account}" target="_blank"
+            <a href="https://adsmanager.facebook.com/adsmanager/billing?act=${currentClient.account}" target="_blank"
                style="display:inline-block;padding:12px 28px;background:var(--accent);color:#fff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none">
               Open Meta Billing →
             </a>
